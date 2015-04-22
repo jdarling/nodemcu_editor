@@ -6499,7 +6499,7 @@ button.close {
   font-family: Terminal, monospace;
 }
 .console .output {
-  max-height: 180px;
+  max-height: 100px;
   overflow: auto;
 }
 .console input.command {

@@ -61280,6 +61280,27 @@ var ListGroupItem = Bootstrap.ListGroupItem;
 
 var Ace  = require('./ace.jsx');
 
+var ConsoleOutput = React.createClass({displayName: "ConsoleOutput",
+  componentWillUpdate: function() {
+    var node = this.getDOMNode();
+    this.shouldScrollBottom = node.scrollTop + node.offsetHeight === node.scrollHeight;
+  },
+  componentDidUpdate: function() {
+    if (this.shouldScrollBottom) {
+      var node = this.getDOMNode();
+      node.scrollTop = node.scrollHeight
+    }
+  },
+  render: function(){
+    var lines = (this.props.lines||'').split('\n').map(function(line, index){
+      return React.createElement("p", {key: index}, line);
+    });
+    return (
+      React.createElement("div", {className: "output"}, {lines:lines})
+    );
+  }
+});
+
 var Console = React.createClass({displayName: "Console",
   getInitialState: function(){
     return {
@@ -61310,12 +61331,9 @@ var Console = React.createClass({displayName: "Console",
   },
   render: function(){
     var inputText = this.state.inputText;
-    var lines = this.state.buffer.split('\n').map(function(line, index){
-      return React.createElement("p", {key: index}, line);
-    });
     return (
       React.createElement("div", {className: "console"}, 
-        React.createElement("div", {className: "output"}, {lines:lines}), 
+        React.createElement(ConsoleOutput, {lines: this.state.buffer}), 
         React.createElement("input", {className: "command", id: "terminalCommand", name: "terminalCommand", ref: "command", 
           value: inputText, 
           onChange: this.terminalTextChange, 
@@ -61388,11 +61406,7 @@ var Layout = React.createClass({displayName: "Layout",
   runScript: function(){
     var script = JSON.stringify(this.refs.editor.editor.getValue());
     script = ("file.open(\".__ide.lua\", \"w\");\nfile.write(" + 
-script + ");\nfile.close();\n\nfile.open(\".__ide.lua\", \"r\");\n=file.read();\nfile.close();\n\ndofile(\".__ide.lua\");"
-
-
-
-
+script + ");\nfile.close();\n\ndofile(\".__ide.lua\");"
 
 
 );

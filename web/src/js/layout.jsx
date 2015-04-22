@@ -30,6 +30,27 @@ var ListGroupItem = Bootstrap.ListGroupItem;
 
 var Ace  = require('./ace.jsx');
 
+var ConsoleOutput = React.createClass({
+  componentWillUpdate: function() {
+    var node = this.getDOMNode();
+    this.shouldScrollBottom = node.scrollTop + node.offsetHeight === node.scrollHeight;
+  },
+  componentDidUpdate: function() {
+    if (this.shouldScrollBottom) {
+      var node = this.getDOMNode();
+      node.scrollTop = node.scrollHeight
+    }
+  },
+  render: function(){
+    var lines = (this.props.lines||'').split('\n').map(function(line, index){
+      return <p key={index}>{line}</p>;
+    });
+    return (
+      <div className="output">{{lines}}</div>
+    );
+  }
+});
+
 var Console = React.createClass({
   getInitialState: function(){
     return {
@@ -60,12 +81,9 @@ var Console = React.createClass({
   },
   render: function(){
     var inputText = this.state.inputText;
-    var lines = this.state.buffer.split('\n').map(function(line, index){
-      return <p key={index}>{line}</p>;
-    });
     return (
       <div className="console">
-        <div className="output">{{lines}}</div>
+        <ConsoleOutput lines={this.state.buffer} />
         <input className="command" id="terminalCommand" name="terminalCommand" ref="command"
           value={inputText}
           onChange={this.terminalTextChange}
@@ -139,10 +157,6 @@ var Layout = React.createClass({
     var script = JSON.stringify(this.refs.editor.editor.getValue());
     script = `file.open(".__ide.lua", "w");
 file.write(${script});
-file.close();
-
-file.open(".__ide.lua", "r");
-=file.read();
 file.close();
 
 dofile(".__ide.lua");`;
