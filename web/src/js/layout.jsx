@@ -167,6 +167,15 @@ file.close();`;
   getIp: function(){
     runScript('=wifi.sta.getip();');
   },
+  heapInfo: function(){
+    runScript('= node.heap();');
+  },
+  chipId: function(){
+    runScript('= node.chipid();');
+  },
+  listFiles: function(){
+    runScript('for k,v in pairs(file.list()) do l = string.format("%-15s",k) print(l.."   "..v.." bytes") end');
+  },
   scanForAP: function(){
     runScript(`wifi.setmode(wifi.STATION);
 wifi.sta.getap(function(t)
@@ -205,7 +214,10 @@ end)`;
               <NavItem eventKey={1} onClick={this.resetNode}>Reset</NavItem>
               <NavItem eventKey={2} onClick={this.dumpCode}>Dump Code</NavItem>
               <NavItem eventKey={3} onClick={this.getIp}>Get IP</NavItem>
-              <NavItem eventKey={3} onClick={this.scanForAP}>Scan for AP's</NavItem>
+              <NavItem eventKey={4} onClick={this.scanForAP}>Scan for AP's</NavItem>
+              <NavItem eventKey={5} onClick={this.heapInfo}>Heap Info</NavItem>
+              <NavItem eventKey={5} onClick={this.chipId}>Chip ID</NavItem>
+              <NavItem eventKey={5} onClick={this.listFiles}>List Files</NavItem>
             </Nav>
           </Navbar>
         </Row>

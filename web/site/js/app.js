@@ -61417,6 +61417,15 @@ script + ");\nfile.close();\n\nfile.open(\".__ide.lua\", \"r\");\n=file.read();\
   getIp: function(){
     runScript('=wifi.sta.getip();');
   },
+  heapInfo: function(){
+    runScript('= node.heap();');
+  },
+  chipId: function(){
+    runScript('= node.chipid();');
+  },
+  listFiles: function(){
+    runScript('for k,v in pairs(file.list()) do l = string.format("%-15s",k) print(l.."   "..v.." bytes") end');
+  },
   scanForAP: function(){
     runScript(("wifi.setmode(wifi.STATION);\nwifi.sta.getap(function(t)\n  if t then\n    print(\"Visible Access Points:\");\n    for k,v in pairs(t) do\n      l = string.format(\"%-10s\",k);\n      print(l..\"  \"..v);\n    end\n  else\n    print(\"Try again\");\n  end\nend)"
 
@@ -61455,7 +61464,10 @@ script + ");\nfile.close();\n\nfile.open(\".__ide.lua\", \"r\");\n=file.read();\
               React.createElement(NavItem, {eventKey: 1, onClick: this.resetNode}, "Reset"), 
               React.createElement(NavItem, {eventKey: 2, onClick: this.dumpCode}, "Dump Code"), 
               React.createElement(NavItem, {eventKey: 3, onClick: this.getIp}, "Get IP"), 
-              React.createElement(NavItem, {eventKey: 3, onClick: this.scanForAP}, "Scan for AP's")
+              React.createElement(NavItem, {eventKey: 4, onClick: this.scanForAP}, "Scan for AP's"), 
+              React.createElement(NavItem, {eventKey: 5, onClick: this.heapInfo}, "Heap Info"), 
+              React.createElement(NavItem, {eventKey: 5, onClick: this.chipId}, "Chip ID"), 
+              React.createElement(NavItem, {eventKey: 5, onClick: this.listFiles}, "List Files")
             )
           )
         ), 
