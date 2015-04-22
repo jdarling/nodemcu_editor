@@ -1,0 +1,9 @@
+/node_modules
+node_modules/
+/logs
+logs/
+npm-debug.log
+.idea
+.env
+.test
+*.heapsnapshot

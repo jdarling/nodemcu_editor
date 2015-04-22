@@ -1,0 +1,17 @@
+#!/usr/bin/env node
+
+var fs = require('fs');
+var path = require('path');
+
+var logger = require('../lib/logger');
+
+var utils = require('../lib/utils');
+var config = require('../lib/config');
+
+var baseDir = path.join(__dirname, '../');
+
+var server = require('../lib/server');
+
+try{
+  fs.mkdirSync('./logs');
+}catch(e){}
