@@ -129,13 +129,6 @@ var FileBrowser = React.createClass({
   }
 });
 
-/*
-file.open(".__ide.lua", "r")
-print(file.read())
-file.close()
-dofile(".__ide.lua")
-print(wifi.sta.getip())
-*/
 var noop = function(){};
 var runScript = function(script, callback){
   return Loader.post('/api/v1/serial/put', {data: script}, callback||noop);
@@ -216,16 +209,21 @@ end)`;
               <NavItem eventKey={3} onClick={this.getIp}>Get IP</NavItem>
               <NavItem eventKey={4} onClick={this.scanForAP}>Scan for AP's</NavItem>
               <NavItem eventKey={5} onClick={this.heapInfo}>Heap Info</NavItem>
-              <NavItem eventKey={5} onClick={this.chipId}>Chip ID</NavItem>
-              <NavItem eventKey={5} onClick={this.listFiles}>List Files</NavItem>
+              <NavItem eventKey={6} onClick={this.chipId}>Chip ID</NavItem>
+              <NavItem eventKey={7} onClick={this.listFiles}>List Files</NavItem>
             </Nav>
           </Navbar>
         </Row>
         <Row>
+          {/*
           <Col sm={12} md={2}>
             <FileBrowser editor={editor} />
           </Col>
           <Col sm={12} md={10}>
+            {editor}
+          </Col>
+          //*/}
+          <Col sm={12} md={12}>
             {editor}
           </Col>
         </Row>

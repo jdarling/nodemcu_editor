@@ -61379,13 +61379,6 @@ var FileBrowser = React.createClass({displayName: "FileBrowser",
   }
 });
 
-/*
-file.open(".__ide.lua", "r")
-print(file.read())
-file.close()
-dofile(".__ide.lua")
-print(wifi.sta.getip())
-*/
 var noop = function(){};
 var runScript = function(script, callback){
   return Loader.post('/api/v1/serial/put', {data: script}, callback||noop);
@@ -61466,16 +61459,21 @@ script + ");\nfile.close();\n\nfile.open(\".__ide.lua\", \"r\");\n=file.read();\
               React.createElement(NavItem, {eventKey: 3, onClick: this.getIp}, "Get IP"), 
               React.createElement(NavItem, {eventKey: 4, onClick: this.scanForAP}, "Scan for AP's"), 
               React.createElement(NavItem, {eventKey: 5, onClick: this.heapInfo}, "Heap Info"), 
-              React.createElement(NavItem, {eventKey: 5, onClick: this.chipId}, "Chip ID"), 
-              React.createElement(NavItem, {eventKey: 5, onClick: this.listFiles}, "List Files")
+              React.createElement(NavItem, {eventKey: 6, onClick: this.chipId}, "Chip ID"), 
+              React.createElement(NavItem, {eventKey: 7, onClick: this.listFiles}, "List Files")
             )
           )
         ), 
         React.createElement(Row, null, 
-          React.createElement(Col, {sm: 12, md: 2}, 
-            React.createElement(FileBrowser, {editor: editor})
-          ), 
-          React.createElement(Col, {sm: 12, md: 10}, 
+          /*
+          <Col sm={12} md={2}>
+            <FileBrowser editor={editor} />
+          </Col>
+          <Col sm={12} md={10}>
+            {editor}
+          </Col>
+          //*/
+          React.createElement(Col, {sm: 12, md: 12}, 
             editor
           )
         ), 
