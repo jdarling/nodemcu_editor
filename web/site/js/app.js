@@ -66603,6 +66603,43 @@ var Loader = require('../lib/loader');
 var Support = require('../lib/support');
 var sockets = require('../lib/socket');
 
+var noop = function(){};
+
+var sampleSource = ("-- a simple http server\nsrv=net.createServer(net.TCP)\n\nsrv:listen(80,function(conn)\n  conn:on(\"receive\",function(conn,payload)\n    print(payload)\n    conn:send(\"<h1> Hello, NodeMCU.</h1>\")\n  end)\nend)"
+
+
+
+
+
+
+
+);
+
+var sampleSource = ("Account = { balance = 0 }\nfunction Account:new (o)\n  o = o or {}\t-- create object if user does not provide one\n  setmetatable(o, self)\n  self.__index = self\n  return o\nend\n\nfunction Account.withdraw (self, v)\n  self.balance = self.balance - v\nend\n\nfunction Account.deposit (self, v)\n  self.balance = self.balance + v\nend\n\na = Account:new{balance = 0}\na:deposit(100.00)\nprint(a.balance)\t--> 100\n\nb = Account:new()\nprint(b.balance)\t--> 0\n"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+);
+
+
 var Select = require('react-select');
 
 var fileList = {
@@ -66749,47 +66786,32 @@ var FileBrowser = React.createClass({displayName: "FileBrowser",
   }
 });
 
-var noop = function(){};
 var runScript = function(script, callback){
   return Loader.post('/api/v1/serial/put', {data: script}, callback||noop);
 };
 
-var Layout = React.createClass({displayName: "Layout",
-  runScript: function(){
+var SCRIPT_COMMANDS = {
+  'Run': '{source}',
+  'Reset': 'node.restart();',
+  'Dump Code': 'file.open(".__ide.lua", "r");\n=file.read();\nfile.close();',
+  'Save and Run': function(options){
     var src = this.refs.editor.editor.getValue().split('\n');
     var script = src.map(function(line){
       return 'file.writeline('+JSON.stringify(line)+');';
+      return 'file.writeline('+JSON.stringify(line)+');';
     }).join('\n');
-    script = ("file.open(\".__ide.lua\", \"w\");\n" + 
-script + "\nfile.close();\n\ndofile(\".__ide.lua\");"
+    script = ("file.open(\".__ide.lua\", \"w\");\n      " + 
+script + "\n      file.close();\n\n      dofile(\".__ide.lua\");"
 
 
 );
-    runScript(script);
+    return script;
   },
-  dumpCode: function(){
-    var script = ("file.open(\".__ide.lua\", \"r\");\n=file.read();\nfile.close();"
-
-);
-    runScript(script);
-  },
-  resetNode: function(){
-    runScript('node.restart();');
-  },
-  getIp: function(){
-    runScript('=wifi.sta.getip();');
-  },
-  heapInfo: function(){
-    runScript('= node.heap();');
-  },
-  chipId: function(){
-    runScript('= node.chipid();');
-  },
-  listFiles: function(){
-    runScript('for k,v in pairs(file.list()) do l = string.format("%-15s",k) print(l.."   "..v.." bytes") end');
-  },
-  scanForAP: function(){
-    runScript(("wifi.setmode(wifi.STATION);\nwifi.sta.getap(function(t)\n  if t then\n    print(\"Visible Access Points:\");\n    for k,v in pairs(t) do\n      l = string.format(\"%-10s\",k);\n      print(l..\"  \"..v);\n    end\n  else\n    print(\"Try again\");\n  end\nend)"
+  'Get IP': '=wifi.sta.getip();',
+  'Heap Info': '=node.heap();',
+  'Chip ID': '=node.chipid();',
+  'List Files': 'for k,v in pairs(file.list()) do l = string.format("%-15s",k) print(l.."   "..v.." bytes") end',
+  'Scan for AP\'s': ("wifi.setmode(wifi.STATION);\n    wifi.sta.getap(function(t)\n    if t then\n      print(\"Visible Access Points:\");\n      for k,v in pairs(t) do\n        l = string.format(\"%-10s\",k);\n        print(l..\"  \"..v);\n      end\n    else\n      print(\"Try again\");\n    end\n    end)"
 
 
 
@@ -66800,60 +66822,57 @@ script + "\nfile.close();\n\ndofile(\".__ide.lua\");"
 
 
 
-));
+)
+};
+
+var Layout = React.createClass({displayName: "Layout",
+  runScript: function(scriptName){
+    return function(){
+      var src = this.refs.editor.editor.getValue();
+      var script = SCRIPT_COMMANDS[scriptName]||scriptName;
+      if(typeof(script)==='string'){
+        var opts = {
+          source: src,
+        };
+        return runScript(script.replace(/\{([a-z0-9]+)\}/ig, function(full, token){
+          return opts[token];
+        }));
+      }
+      if(typeof(script)==='function'){
+        var source = script({
+          source: src
+        });
+        return runScript(source);
+      }
+    }.bind(this);
   },
   render: function(){
-    var sampleSource = ("-- a simple http server\nsrv=net.createServer(net.TCP)\nsrv:listen(80,function(conn)\n    conn:on(\"receive\",function(conn,payload)\n    print(payload)\n    conn:send(\"<h1> Hello, NodeMCU.</h1>\")\n    end)\nend)"
-
-
-
-
-
-
-);
-    var sampleSource = ("local Account = { balance = 0 }\n\nfunction Account:new (o)\n\to = o or {}\t-- create object if user does not provide one\n\tsetmetatable(o, self)\n\tself.__index = self\n\treturn o\nend\n\nfunction Account.withdraw (self, v)\n\tself.balance = self.balance - v\nend\n\nfunction Account.deposit (self, v)\n\tself.balance = self.balance + v\nend\n\na = Account:new{balance = 0}\na:deposit(100.00)\nprint(a.balance)\t--> 100\n\nb = Account:new()\nprint(b.balance)\t--> 0\n"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-);
     var editor = React.createElement(Ace, {
             ref: "editor", 
             mode: "lua", 
             theme: "github", 
             width: "100%", 
             value: sampleSource});
+    var nav = Object.keys(SCRIPT_COMMANDS).map(function(title, index){
+      return React.createElement(NavItem, {eventKey: index, key: index, onClick: this.runScript(title)}, title);
+    }.bind(this));
+
     return (
       React.createElement(Grid, null, 
         React.createElement(Row, null, 
           React.createElement(Navbar, null, 
             React.createElement(Nav, null, 
-              React.createElement(NavItem, {eventKey: 0, onClick: this.runScript}, "Run"), 
-              React.createElement(NavItem, {eventKey: 1, onClick: this.resetNode}, "Reset"), 
-              React.createElement(NavItem, {eventKey: 2, onClick: this.dumpCode}, "Dump Code"), 
-              React.createElement(NavItem, {eventKey: 3, onClick: this.getIp}, "Get IP"), 
-              React.createElement(NavItem, {eventKey: 4, onClick: this.scanForAP}, "Scan for AP's"), 
-              React.createElement(NavItem, {eventKey: 5, onClick: this.heapInfo}, "Heap Info"), 
-              React.createElement(NavItem, {eventKey: 6, onClick: this.chipId}, "Chip ID"), 
-              React.createElement(NavItem, {eventKey: 7, onClick: this.listFiles}, "List Files")
+              nav
+              /*
+              <NavItem eventKey={0} onClick={this.runScript}>Run</NavItem>
+              <NavItem eventKey={1} onClick={this.resetNode}>Reset</NavItem>
+              <NavItem eventKey={2} onClick={this.dumpCode}>Dump Code</NavItem>
+              <NavItem eventKey={3} onClick={this.getIp}>Get IP</NavItem>
+              <NavItem eventKey={4} onClick={this.scanForAP}>Scan for AP's</NavItem>
+              <NavItem eventKey={5} onClick={this.heapInfo}>Heap Info</NavItem>
+              <NavItem eventKey={6} onClick={this.chipId}>Chip ID</NavItem>
+              <NavItem eventKey={7} onClick={this.listFiles}>List Files</NavItem>
+              //*/
             )
           )
         ), 

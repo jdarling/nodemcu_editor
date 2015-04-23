@@ -3,6 +3,43 @@ var Loader = require('../lib/loader');
 var Support = require('../lib/support');
 var sockets = require('../lib/socket');
 
+var noop = function(){};
+
+var sampleSource = `-- a simple http server
+srv=net.createServer(net.TCP)
+
+srv:listen(80,function(conn)
+  conn:on("receive",function(conn,payload)
+    print(payload)
+    conn:send("<h1> Hello, NodeMCU.</h1>")
+  end)
+end)`;
+
+var sampleSource = `Account = { balance = 0 }
+function Account:new (o)
+  o = o or {}	-- create object if user does not provide one
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function Account.withdraw (self, v)
+  self.balance = self.balance - v
+end
+
+function Account.deposit (self, v)
+  self.balance = self.balance + v
+end
+
+a = Account:new{balance = 0}
+a:deposit(100.00)
+print(a.balance)	--> 100
+
+b = Account:new()
+print(b.balance)	--> 0
+`;
+
+
 var Select = require('react-select');
 
 var fileList = {
@@ -149,103 +186,84 @@ var FileBrowser = React.createClass({
   }
 });
 
-var noop = function(){};
 var runScript = function(script, callback){
   return Loader.post('/api/v1/serial/put', {data: script}, callback||noop);
 };
 
-var Layout = React.createClass({
-  runScript: function(){
+var SCRIPT_COMMANDS = {
+  'Run': '{source}',
+  'Reset': 'node.restart();',
+  'Dump Code': 'file.open(".__ide.lua", "r");\n=file.read();\nfile.close();',
+  'Save and Run': function(options){
     var src = this.refs.editor.editor.getValue().split('\n');
     var script = src.map(function(line){
       return 'file.writeline('+JSON.stringify(line)+');';
+      return 'file.writeline('+JSON.stringify(line)+');';
     }).join('\n');
     script = `file.open(".__ide.lua", "w");
-${script}
-file.close();
+      ${script}
+      file.close();
 
-dofile(".__ide.lua");`;
-    runScript(script);
+      dofile(".__ide.lua");`;
+    return script;
   },
-  dumpCode: function(){
-    var script = `file.open(".__ide.lua", "r");
-=file.read();
-file.close();`;
-    runScript(script);
-  },
-  resetNode: function(){
-    runScript('node.restart();');
-  },
-  getIp: function(){
-    runScript('=wifi.sta.getip();');
-  },
-  heapInfo: function(){
-    runScript('= node.heap();');
-  },
-  chipId: function(){
-    runScript('= node.chipid();');
-  },
-  listFiles: function(){
-    runScript('for k,v in pairs(file.list()) do l = string.format("%-15s",k) print(l.."   "..v.." bytes") end');
-  },
-  scanForAP: function(){
-    runScript(`wifi.setmode(wifi.STATION);
-wifi.sta.getap(function(t)
-  if t then
-    print("Visible Access Points:");
-    for k,v in pairs(t) do
-      l = string.format("%-10s",k);
-      print(l.."  "..v);
+  'Get IP': '=wifi.sta.getip();',
+  'Heap Info': '=node.heap();',
+  'Chip ID': '=node.chipid();',
+  'List Files': 'for k,v in pairs(file.list()) do l = string.format("%-15s",k) print(l.."   "..v.." bytes") end',
+  'Scan for AP\'s': `wifi.setmode(wifi.STATION);
+    wifi.sta.getap(function(t)
+    if t then
+      print("Visible Access Points:");
+      for k,v in pairs(t) do
+        l = string.format("%-10s",k);
+        print(l.."  "..v);
+      end
+    else
+      print("Try again");
     end
-  else
-    print("Try again");
-  end
-end)`);
+    end)`
+};
+
+var Layout = React.createClass({
+  runScript: function(scriptName){
+    return function(){
+      var src = this.refs.editor.editor.getValue();
+      var script = SCRIPT_COMMANDS[scriptName]||scriptName;
+      if(typeof(script)==='string'){
+        var opts = {
+          source: src,
+        };
+        return runScript(script.replace(/\{([a-z0-9]+)\}/ig, function(full, token){
+          return opts[token];
+        }));
+      }
+      if(typeof(script)==='function'){
+        var source = script({
+          source: src
+        });
+        return runScript(source);
+      }
+    }.bind(this);
   },
   render: function(){
-    var sampleSource = `-- a simple http server
-srv=net.createServer(net.TCP)
-srv:listen(80,function(conn)
-    conn:on("receive",function(conn,payload)
-    print(payload)
-    conn:send("<h1> Hello, NodeMCU.</h1>")
-    end)
-end)`;
-    var sampleSource = `local Account = { balance = 0 }
-
-function Account:new (o)
-	o = o or {}	-- create object if user does not provide one
-	setmetatable(o, self)
-	self.__index = self
-	return o
-end
-
-function Account.withdraw (self, v)
-	self.balance = self.balance - v
-end
-
-function Account.deposit (self, v)
-	self.balance = self.balance + v
-end
-
-a = Account:new{balance = 0}
-a:deposit(100.00)
-print(a.balance)	--> 100
-
-b = Account:new()
-print(b.balance)	--> 0
-`;
     var editor = <Ace
             ref="editor"
             mode="lua"
             theme="github"
             width="100%"
             value={sampleSource} />;
+    var nav = Object.keys(SCRIPT_COMMANDS).map(function(title, index){
+      return <NavItem eventKey={index} key={index} onClick={this.runScript(title)}>{title}</NavItem>;
+    }.bind(this));
+
     return (
       <Grid>
         <Row>
           <Navbar>
             <Nav>
+              {nav}
+              {/*
               <NavItem eventKey={0} onClick={this.runScript}>Run</NavItem>
               <NavItem eventKey={1} onClick={this.resetNode}>Reset</NavItem>
               <NavItem eventKey={2} onClick={this.dumpCode}>Dump Code</NavItem>
@@ -254,6 +272,7 @@ print(b.balance)	--> 0
               <NavItem eventKey={5} onClick={this.heapInfo}>Heap Info</NavItem>
               <NavItem eventKey={6} onClick={this.chipId}>Chip ID</NavItem>
               <NavItem eventKey={7} onClick={this.listFiles}>List Files</NavItem>
+              //*/}
             </Nav>
           </Navbar>
         </Row>
