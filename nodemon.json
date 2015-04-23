@@ -1,0 +1,6 @@
+{
+  "verbose": true,
+  "ignore": [
+    "*.test.js", "test/*.js", "node_modules/*", ".git/*", "web/*"
+  ]
+}
