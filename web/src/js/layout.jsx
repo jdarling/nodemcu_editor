@@ -148,7 +148,6 @@ var FileBrowser = React.createClass({
         console.log('editor.value: ', this.props.editor.value);
         console.log('editor.props.value: ', this.props.editor.props.value);
         console.log(value);
-        //this.props.editor.props.value = value;
         this.props.editor.setProps({
             value: value
           });
