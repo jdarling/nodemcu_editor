@@ -191,7 +191,7 @@ var runScript = function(script, callback){
 };
 
 var SCRIPT_COMMANDS = {
-  'Run': '{source}',
+  'Run': '{selection}',
   'Reset': 'node.restart();',
   'Dump Code': 'file.open(".__ide.lua", "r");\n=file.read();\nfile.close();',
   'Save and Run': function(options){
@@ -229,11 +229,13 @@ var Layout = React.createClass({
   runScript: function(scriptName){
     return function(){
       var editor = this.refs.editor.editor;
-      var src = editor.getSelectedText()||editor.getValue();
+      var src = editor.getValue();
+      var selection = editor.getSelectedText()||src;
       var script = SCRIPT_COMMANDS[scriptName]||scriptName;
       if(typeof(script)==='string'){
         var opts = {
           source: src,
+          selection: selection,
         };
         return runScript(script.replace(/\{([a-z0-9]+)\}/ig, function(full, token){
           return opts[token];
@@ -241,7 +243,8 @@ var Layout = React.createClass({
       }
       if(typeof(script)==='function'){
         var source = script({
-          source: src
+          source: src,
+          selection: selection,
         });
         return runScript(source);
       }
