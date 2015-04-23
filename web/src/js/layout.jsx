@@ -187,7 +187,8 @@ var FileBrowser = React.createClass({
 });
 
 var runScript = function(script, callback){
-  return Loader.post('/api/v1/serial/put', {data: script}, callback||noop);
+  sockets.emit('serial::write', script);
+  //return Loader.post('/api/v1/serial/put', {data: script}, callback||noop);
 };
 
 var SCRIPT_COMMANDS = {
