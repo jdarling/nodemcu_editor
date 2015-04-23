@@ -66711,7 +66711,7 @@ var Console = React.createClass({displayName: "Console",
   processTerminalKey: function(e){
     var command = React.findDOMNode(this.refs.command).value||'';
     if(e.charCode === 13){
-      return Loader.post('/api/v1/serial/put', {data: command}, function(){
+      return runScript(command, function(){
         return this.setState({
             inputText: ''
           });
@@ -66787,7 +66787,7 @@ var FileBrowser = React.createClass({displayName: "FileBrowser",
 });
 
 var runScript = function(script, callback){
-  sockets.emit('serial::write', script);
+  sockets.emit('serial::write', script, callback);
   //return Loader.post('/api/v1/serial/put', {data: script}, callback||noop);
 };
 
@@ -66796,7 +66796,7 @@ var SCRIPT_COMMANDS = {
   'Reset': 'node.restart();',
   'Dump Code': 'file.open(".__ide.lua", "r");\n=file.read();\nfile.close();',
   'Save and Run': function(options){
-    var src = this.refs.editor.editor.getValue().split('\n');
+    var src = options.source.split('\n');
     var script = src.map(function(line){
       return 'file.writeline('+JSON.stringify(line)+');';
       return 'file.writeline('+JSON.stringify(line)+');';
