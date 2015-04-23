@@ -66828,7 +66828,8 @@ script + "\n      file.close();\n\n      dofile(\".__ide.lua\");"
 var Layout = React.createClass({displayName: "Layout",
   runScript: function(scriptName){
     return function(){
-      var src = this.refs.editor.editor.getValue();
+      var editor = this.refs.editor.editor;
+      var src = editor.getSelectedText()||editor.getValue();
       var script = SCRIPT_COMMANDS[scriptName]||scriptName;
       if(typeof(script)==='string'){
         var opts = {
