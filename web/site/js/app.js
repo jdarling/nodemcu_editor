@@ -66864,28 +66864,10 @@ var Layout = React.createClass({displayName: "Layout",
           React.createElement(Navbar, null, 
             React.createElement(Nav, null, 
               nav
-              /*
-              <NavItem eventKey={0} onClick={this.runScript}>Run</NavItem>
-              <NavItem eventKey={1} onClick={this.resetNode}>Reset</NavItem>
-              <NavItem eventKey={2} onClick={this.dumpCode}>Dump Code</NavItem>
-              <NavItem eventKey={3} onClick={this.getIp}>Get IP</NavItem>
-              <NavItem eventKey={4} onClick={this.scanForAP}>Scan for AP's</NavItem>
-              <NavItem eventKey={5} onClick={this.heapInfo}>Heap Info</NavItem>
-              <NavItem eventKey={6} onClick={this.chipId}>Chip ID</NavItem>
-              <NavItem eventKey={7} onClick={this.listFiles}>List Files</NavItem>
-              //*/
             )
           )
         ), 
         React.createElement(Row, null, 
-          /*
-          <Col sm={12} md={2}>
-            <FileBrowser editor={editor} />
-          </Col>
-          <Col sm={12} md={10}>
-            {editor}
-          </Col>
-          //*/
           React.createElement(Col, {sm: 12, md: 12}, 
             editor
           )
