@@ -14,6 +14,8 @@ var fileList = {
   }
 };
 
+var colony = require('colony-compiler');
+
 var Bootstrap = require('react-bootstrap');
 var Navbar = Bootstrap.Navbar;
 var Nav = Bootstrap.Nav;
@@ -154,9 +156,12 @@ var runScript = function(script, callback){
 
 var Layout = React.createClass({
   runScript: function(){
-    var script = JSON.stringify(this.refs.editor.editor.getValue());
+    var src = this.refs.editor.editor.getValue().split('\n');
+    var script = src.map(function(line){
+      return 'file.writeline('+JSON.stringify(line)+');';
+    }).join('\n');
     script = `file.open(".__ide.lua", "w");
-file.write(${script});
+${script}
 file.close();
 
 dofile(".__ide.lua");`;
@@ -206,6 +211,30 @@ srv:listen(80,function(conn)
     conn:send("<h1> Hello, NodeMCU.</h1>")
     end)
 end)`;
+    var sampleSource = `local Account = { balance = 0 }
+
+function Account:new (o)
+	o = o or {}	-- create object if user does not provide one
+	setmetatable(o, self)
+	self.__index = self
+	return o
+end
+
+function Account.withdraw (self, v)
+	self.balance = self.balance - v
+end
+
+function Account.deposit (self, v)
+	self.balance = self.balance + v
+end
+
+a = Account:new{balance = 0}
+a:deposit(100.00)
+print(a.balance)	--> 100
+
+b = Account:new()
+print(b.balance)	--> 0
+`;
     var editor = <Ace
             ref="editor"
             mode="lua"

@@ -19,6 +19,7 @@
     "ace": "git://github.com/ajaxorg/ace.git",
     "brace": "^0.5.1",
     "browserify": "^9.0.7",
+    "colony-compiler": "^1.0.1",
     "del": "^1.1.1",
     "gulp": "^3.8.11",
     "gulp-autoprefixer": "^2.1.0",
