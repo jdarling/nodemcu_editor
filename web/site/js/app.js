@@ -66577,7 +66577,6 @@ module.exports = React.createClass({displayName: "exports",
     this.editor.setOption('readOnly', nextProps.readOnly);
     this.editor.setOption('highlightActiveLine', nextProps.highlightActiveLine);
     this.editor.setShowPrintMargin(nextProps.setShowPrintMargin);
-    console.log('nextProps.value', nextProps.value);
     if (this.editor.getValue() !== nextProps.value) {
       this.editor.setValue(nextProps.value);
     }
@@ -66744,13 +66743,7 @@ var FileBrowser = React.createClass({displayName: "FileBrowser",
         node.style.display = !node.style.display?'none':'';
         break;
       case('load'):
-        console.log('editor: ', this.props.editor);
-        console.log('editor.value: ', this.props.editor.value);
-        console.log('editor.props.value: ', this.props.editor.props.value);
-        console.log(value);
-        this.props.editor.setProps({
-            value: value
-          });
+        this.props.onLoadFile(value);
         break;
       default:
         return;
@@ -66758,21 +66751,26 @@ var FileBrowser = React.createClass({displayName: "FileBrowser",
     e.stopPropagation();
   },
   render: function(){
+    /*
     var buildList = function(from, prefix){
       var p = prefix || '';
       var result = Object.keys(from).map(function(key, index){
           var value = from[key];
           var type = typeof(value);
           if(type==='string'){
-            return React.createElement(ListGroupItem, {key: p+'_'+index, value: 'load:'+value}, key);
+            return <ListGroupItem key={p+'_'+index} value={'load:'+value}>{key}</ListGroupItem>;
           }
-          return React.createElement(ListGroupItem, {bsStyle: "warning", value: 'toggle:'+p+'_'+index}, key, 
-                   React.createElement(ListGroup, {ref: p+'_'+index, key: p+'_'+index}, buildList(value, p+'_'+index))
-                 );
+          return <ListGroupItem bsStyle='warning' value={'toggle:'+p+'_'+index}>{key}
+                   <ListGroup ref={p+'_'+index} key={p+'_'+index}>{buildList(value, p+'_'+index)}</ListGroup>
+                 </ListGroupItem>;
         }.bind(this));
       return result;
     }.bind(this);
     var items = buildList(fileList);
+    */
+    var items = (this.props.items||[]).map(function(item, index){
+      return React.createElement(ListGroupItem, {key: index, value: 'load:'+item.fileName}, item.fileName);
+    });
 
     return (
       React.createElement("div", {onClick: this.handleClick}, 
@@ -66791,22 +66789,26 @@ var runScript = function(script, callback){
 };
 
 var SCRIPT_COMMANDS = {
+  'Refresh Listing': function(){
+    this.loadFiles();
+    return false;
+  },
   'Run': '{selection}',
   'Reset': 'node.restart();',
-  'Dump Code': 'file.open(".__ide.lua", "r");\n=file.read();\nfile.close();',
-  'Save and Run': function(options){
+  'Save': function(options){
     var src = options.source.split('\n');
     var script = src.map(function(line){
       return 'file.writeline('+JSON.stringify(line)+');';
-      return 'file.writeline('+JSON.stringify(line)+');';
     }).join('\n');
     script = ("file.open(\".__ide.lua\", \"w\");\n      " + 
-script + "\n      file.close();\n\n      dofile(\".__ide.lua\");"
-
-
+script + "\n      file.close();"
 );
-    return script;
+    runScript(script, function(){
+      this.loadFiles();
+    }.bind(this));
+    return false;
   },
+  'Run Saved': 'dofile(".__ide.lua");',
   'Get IP': '=wifi.sta.getip();',
   'Heap Info': '=node.heap();',
   'Chip ID': '=node.chipid();',
@@ -66822,10 +66824,30 @@ script + "\n      file.close();\n\n      dofile(\".__ide.lua\");"
 
 
 
-)
+),
 };
 
 var Layout = React.createClass({displayName: "Layout",
+  getInitialState: function(){
+    return {
+      files: [],
+      source: '',
+    };
+  },
+  loadFiles: function(){
+    var source = this.refs.editor.editor.getValue();
+    Loader.get('/api/v1/files', function(err, listing){
+      if(listing){
+        return this.setState({
+          source: source,
+          files: listing
+        });
+      }
+    }.bind(this));
+  },
+  componentDidMount: function(){
+    this.loadFiles();
+  },
   runScript: function(scriptName){
     return function(){
       var editor = this.refs.editor.editor;
@@ -66842,13 +66864,24 @@ var Layout = React.createClass({displayName: "Layout",
         }));
       }
       if(typeof(script)==='function'){
-        var source = script({
+        var source = script.call(this, {
           source: src,
           selection: selection,
+          editor: editor,
         });
-        return runScript(source);
+        if(source!==false){
+          return runScript(source);
+        }
       }
     }.bind(this);
+  },
+  loadFile: function(fileName){
+    var editor = this.refs.editor.editor;
+    Loader.get('/api/v1/file/'+fileName, function(err, source){
+      this.setState({
+        source: source
+      });
+    }.bind(this));
   },
   render: function(){
     var editor = React.createElement(Ace, {
@@ -66856,7 +66889,7 @@ var Layout = React.createClass({displayName: "Layout",
             mode: "lua", 
             theme: "github", 
             width: "100%", 
-            value: sampleSource});
+            value: this.state.source||sampleSource});
     var nav = Object.keys(SCRIPT_COMMANDS).map(function(title, index){
       return React.createElement(NavItem, {eventKey: index, key: index, onClick: this.runScript(title)}, title);
     }.bind(this));
@@ -66871,7 +66904,10 @@ var Layout = React.createClass({displayName: "Layout",
           )
         ), 
         React.createElement(Row, null, 
-          React.createElement(Col, {sm: 12, md: 12}, 
+          React.createElement(Col, {sm: 12, md: 2}, 
+            React.createElement(FileBrowser, {editor: editor, onLoadFile: this.loadFile, items: this.state.files})
+          ), 
+          React.createElement(Col, {sm: 12, md: 10}, 
             editor
           )
         ), 

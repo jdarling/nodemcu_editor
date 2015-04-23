@@ -90,7 +90,6 @@ module.exports = React.createClass({
     this.editor.setOption('readOnly', nextProps.readOnly);
     this.editor.setOption('highlightActiveLine', nextProps.highlightActiveLine);
     this.editor.setShowPrintMargin(nextProps.setShowPrintMargin);
-    console.log('nextProps.value', nextProps.value);
     if (this.editor.getValue() !== nextProps.value) {
       this.editor.setValue(nextProps.value);
     }

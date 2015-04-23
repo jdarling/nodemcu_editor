@@ -144,13 +144,7 @@ var FileBrowser = React.createClass({
         node.style.display = !node.style.display?'none':'';
         break;
       case('load'):
-        console.log('editor: ', this.props.editor);
-        console.log('editor.value: ', this.props.editor.value);
-        console.log('editor.props.value: ', this.props.editor.props.value);
-        console.log(value);
-        this.props.editor.setProps({
-            value: value
-          });
+        this.props.onLoadFile(value);
         break;
       default:
         return;
@@ -158,6 +152,7 @@ var FileBrowser = React.createClass({
     e.stopPropagation();
   },
   render: function(){
+    /*
     var buildList = function(from, prefix){
       var p = prefix || '';
       var result = Object.keys(from).map(function(key, index){
@@ -173,6 +168,10 @@ var FileBrowser = React.createClass({
       return result;
     }.bind(this);
     var items = buildList(fileList);
+    */
+    var items = (this.props.items||[]).map(function(item, index){
+      return <ListGroupItem key={index} value={'load:'+item.fileName}>{item.fileName}</ListGroupItem>;
+    });
 
     return (
       <div onClick={this.handleClick}>
@@ -191,22 +190,26 @@ var runScript = function(script, callback){
 };
 
 var SCRIPT_COMMANDS = {
+  'Refresh Listing': function(){
+    this.loadFiles();
+    return false;
+  },
   'Run': '{selection}',
   'Reset': 'node.restart();',
-  'Dump Code': 'file.open(".__ide.lua", "r");\n=file.read();\nfile.close();',
-  'Save and Run': function(options){
+  'Save': function(options){
     var src = options.source.split('\n');
     var script = src.map(function(line){
-      return 'file.writeline('+JSON.stringify(line)+');';
       return 'file.writeline('+JSON.stringify(line)+');';
     }).join('\n');
     script = `file.open(".__ide.lua", "w");
       ${script}
-      file.close();
-
-      dofile(".__ide.lua");`;
-    return script;
+      file.close();`;
+    runScript(script, function(){
+      this.loadFiles();
+    }.bind(this));
+    return false;
   },
+  'Run Saved': 'dofile(".__ide.lua");',
   'Get IP': '=wifi.sta.getip();',
   'Heap Info': '=node.heap();',
   'Chip ID': '=node.chipid();',
@@ -222,10 +225,30 @@ var SCRIPT_COMMANDS = {
     else
       print("Try again");
     end
-    end)`
+    end)`,
 };
 
 var Layout = React.createClass({
+  getInitialState: function(){
+    return {
+      files: [],
+      source: '',
+    };
+  },
+  loadFiles: function(){
+    var source = this.refs.editor.editor.getValue();
+    Loader.get('/api/v1/files', function(err, listing){
+      if(listing){
+        return this.setState({
+          source: source,
+          files: listing
+        });
+      }
+    }.bind(this));
+  },
+  componentDidMount: function(){
+    this.loadFiles();
+  },
   runScript: function(scriptName){
     return function(){
       var editor = this.refs.editor.editor;
@@ -242,13 +265,24 @@ var Layout = React.createClass({
         }));
       }
       if(typeof(script)==='function'){
-        var source = script({
+        var source = script.call(this, {
           source: src,
           selection: selection,
+          editor: editor,
         });
-        return runScript(source);
+        if(source!==false){
+          return runScript(source);
+        }
       }
     }.bind(this);
+  },
+  loadFile: function(fileName){
+    var editor = this.refs.editor.editor;
+    Loader.get('/api/v1/file/'+fileName, function(err, source){
+      this.setState({
+        source: source
+      });
+    }.bind(this));
   },
   render: function(){
     var editor = <Ace
@@ -256,7 +290,7 @@ var Layout = React.createClass({
             mode="lua"
             theme="github"
             width="100%"
-            value={sampleSource} />;
+            value={this.state.source||sampleSource} />;
     var nav = Object.keys(SCRIPT_COMMANDS).map(function(title, index){
       return <NavItem eventKey={index} key={index} onClick={this.runScript(title)}>{title}</NavItem>;
     }.bind(this));
@@ -271,7 +305,10 @@ var Layout = React.createClass({
           </Navbar>
         </Row>
         <Row>
-          <Col sm={12} md={12}>
+          <Col sm={12} md={2}>
+            <FileBrowser editor={editor} onLoadFile={this.loadFile} items={this.state.files} />
+          </Col>
+          <Col sm={12} md={10}>
             {editor}
           </Col>
         </Row>
