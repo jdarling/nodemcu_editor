@@ -79,6 +79,11 @@ gulp.task('images', function() {
     ;
 });
 
+gulp.task('fonts', function(){
+  return gulp.src('web/src/style/bootstrap/dist/fonts/*.*')
+  .pipe(gulp.dest('web/site/fonts'));
+});
+
 gulp.task('watch', ['clean'], function() {
   watching = true;
   // Watch .less files
@@ -93,10 +98,12 @@ gulp.task('watch', ['clean'], function() {
   // Watch the html files
   gulp.watch('web/src/**/*.html', ['html']);
   gulp.watch('web/src/**/*.md', ['html']);
+  // Watch the font files
+  gulp.watch('web/src/style/bootstrap/dist/fonts/*.*', ['fonts']);
   // Start
-  gulp.start('styles', 'html', 'images', 'scripts');
+  gulp.start('styles', 'html', 'images', 'scripts', 'fonts');
 });
 
 gulp.task('default', ['clean'], function() {
-    gulp.start('styles', 'html', 'images', 'scripts');
+  gulp.start('styles', 'html', 'images', 'scripts', 'fonts');
 });

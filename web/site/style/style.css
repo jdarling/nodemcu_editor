@@ -6505,3 +6505,8 @@ button.close {
 .console input.command {
   width: 100%;
 }
+.working {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}

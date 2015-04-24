@@ -2,43 +2,9 @@ var React = require('react');
 var Loader = require('../lib/loader');
 var Support = require('../lib/support');
 var sockets = require('../lib/socket');
+var bus = require('../lib/eventbus');
 
 var noop = function(){};
-
-var sampleSource = `-- a simple http server
-srv=net.createServer(net.TCP)
-
-srv:listen(80,function(conn)
-  conn:on("receive",function(conn,payload)
-    print(payload)
-    conn:send("<h1> Hello, NodeMCU.</h1>")
-  end)
-end)`;
-
-var sampleSource = `Account = { balance = 0 }
-function Account:new (o)
-  o = o or {}	-- create object if user does not provide one
-  setmetatable(o, self)
-  self.__index = self
-  return o
-end
-
-function Account.withdraw (self, v)
-  self.balance = self.balance - v
-end
-
-function Account.deposit (self, v)
-  self.balance = self.balance + v
-end
-
-a = Account:new{balance = 0}
-a:deposit(100.00)
-print(a.balance)	--> 100
-
-b = Account:new()
-print(b.balance)	--> 0
-`;
-
 
 var Select = require('react-select');
 
@@ -70,6 +36,7 @@ var Modal = Bootstrap.Modal;
 var ModalTrigger = Bootstrap.ModalTrigger;
 var Input = Bootstrap.Input;
 var Button = Bootstrap.Button;
+var Glyphicon = Bootstrap.Glyphicon;
 
 var Ace  = require('./ace.jsx');
 
@@ -108,6 +75,9 @@ var FileNameDialog = React.createClass({
   saveClicked: function(){
     var fileName = this.refs.fileName.getValue();
     (this.props.onSave || noop)(fileName);
+    if(this.props.event){
+      bus.emit(this.props.event, {fileName: fileName});
+    }
     this.props.onRequestHide();
   },
   render: function(){
@@ -261,24 +231,32 @@ var SCRIPT_COMMANDS = {
   },
   'Run': '{selection}',
   'Reset': 'node.restart();',
+  'Save As': {
+    component: <ModalTrigger modal={<FileNameDialog event="execute::Save" />}>
+                 <NavItem>Save As</NavItem>
+               </ModalTrigger>
+  },
   'Save': function(options){
-    var src = options.source.split('\n');
+    bus.emit('wait::start');
+    var src = options.source.trim().split(/(\r\n|\n)/);
     var script = src.map(function(line){
-      return 'file.writeline('+JSON.stringify(line)+');';
+      return 'file.write('+JSON.stringify(line)+');';
     }).join('\n');
-    script = `file.open(".__ide.lua", "w");
+    script = `file.open("${options.fileName}", "w");
       ${script}
       file.close();`;
     runScript(script, function(){
-      this.loadFiles();
+      this.loadFiles(function(){
+        bus.emit('wait::end');
+        this.loadFile(options.fileName);
+      }.bind(this));
     }.bind(this));
     return false;
   },
-  'Run Saved': 'dofile(".__ide.lua");',
+  'Run Saved': 'dofile("{fileName}");',
   'Get IP': '=wifi.sta.getip();',
   'Heap Info': '=node.heap();',
   'Chip ID': '=node.chipid();',
-  'List Files': 'for k,v in pairs(file.list()) do l = string.format("%-15s",k) print(l.."   "..v.." bytes") end',
   'Scan for AP\'s': `wifi.setmode(wifi.STATION);
     wifi.sta.getap(function(t)
     if t then
@@ -293,60 +271,109 @@ var SCRIPT_COMMANDS = {
     end)`,
 };
 
+var Spinner = React.createClass({
+  render: function(){
+    var spinner = this.props.active?<span><i className="glyphicon glyphicon-refresh"></i>Working...</span>:'';
+    return (
+      <span {...this.props}>{spinner}</span>
+    );
+  }
+});
+
 var Layout = React.createClass({
   getInitialState: function(){
     return {
       files: [],
       source: '',
+      workingFile: '.__ide.lua',
+      working: 0,
     };
   },
-  loadFiles: function(){
+  loadFiles: function(callback){
+    bus.emit('wait::start');
     var source = this.refs.editor.editor.getValue();
     Loader.get('/api/v1/files', function(err, listing){
+      bus.emit('wait::end');
       if(listing){
-        return this.setState({
+        this.setState({
           source: source,
           files: listing
         });
       }
+      return (callback||noop)();
     }.bind(this));
   },
-  componentDidMount: function(){
-    this.loadFiles();
+  startWait: function(){
+    this.setState({
+      working: this.state.working+1
+    });
   },
-  runScript: function(scriptName){
-    return function(){
+  endWait: function(){
+    this.setState({
+      working: this.state.working>0?this.state.working-1:0
+    });
+  },
+  componentDidMount: function(){
+    bus.on('wait::start', this.startWait);
+    bus.on('wait::end', this.endWait);
+    Object.keys(SCRIPT_COMMANDS).forEach(function(command){
+      var handler = this.getRunScript(command);
+      bus.on('execute::'+command, function(args){
+        console.log('execute::'+command, args);
+        handler(args);
+      });
+    }.bind(this));
+    this.loadFiles(function(){
+      this.loadFile('.__ide.lua');
+    }.bind(this));
+  },
+  getRunScript: function(scriptName){
+    var script = SCRIPT_COMMANDS[scriptName]||scriptName;
+    var type = typeof(script);
+    switch(type){
+      case('function'):
+        var handler = script.bind(this);
+        break;
+      case('object'):
+        if(script.handler){
+          var handler = script.handler.bind(this);
+          break;
+        }
+        var handler = noop;
+        break;
+      case('string'):
+        var handler = function(opts){
+          runScript(script.replace(/\{([a-z0-9]+)\}/ig, function(full, token){
+            return opts[token];
+          }));
+        }.bind(this);
+        break;
+      default:
+        var handler = noop;
+    }
+
+    return function(params){
       var editor = this.refs.editor.editor;
       var src = editor.getValue();
       var selection = editor.getSelectedText()||src;
-      var script = SCRIPT_COMMANDS[scriptName]||scriptName;
-      if(typeof(script)==='string'){
-        var opts = {
-          source: src,
-          selection: selection,
-        };
-        return runScript(script.replace(/\{([a-z0-9]+)\}/ig, function(full, token){
-          return opts[token];
-        }));
-      }
-      if(typeof(script)==='function'){
-        var source = script.call(this, {
-          source: src,
-          selection: selection,
-          editor: editor,
-        });
-        if(source!==false){
-          return runScript(source);
-        }
-      }
+      var opts = Support.defaults(params||{}, {
+        source: src,
+        selection: selection,
+        editor: editor,
+        fileName: this.state.workingFile,
+      });
+      handler(opts);
     }.bind(this);
   },
   loadFile: function(fileName){
+    bus.emit('wait::start');
     var editor = this.refs.editor.editor;
     Loader.get('/api/v1/file/'+fileName, function(err, source){
       this.setState({
+        workingFile: fileName,
         source: source
       });
+      bus.emit('wait::end');
     }.bind(this));
   },
   render: function(){
@@ -355,36 +382,43 @@ var Layout = React.createClass({
             mode="lua"
             theme="github"
             width="100%"
-            value={this.state.source||sampleSource} />;
+            value={this.state.source} />;
     var nav = Object.keys(SCRIPT_COMMANDS).map(function(title, index){
-      return <NavItem eventKey={index} key={index} onClick={this.runScript(title)}>{title}</NavItem>;
+      var value = SCRIPT_COMMANDS[title];
+      if(value.component){
+        return value.component;
+      }
+      return <NavItem eventKey={index} key={index} onClick={this.getRunScript(title)}>{title}</NavItem>;
     }.bind(this));
 
     return (
-      <Grid>
-        <Row>
-          <Navbar>
-            <Nav>
-              {nav}
-            </Nav>
-          </Navbar>
-        </Row>
-        <Row>
-          <Col sm={12} md={2}>
-            <FileBrowser editor={editor} onLoadFile={this.loadFile} items={this.state.files} />
-          </Col>
-          <Col sm={12} md={10}>
-            {editor}
-          </Col>
-        </Row>
-        <Row>
-          <TabbedArea>
-            <TabPane eventKey={0} tab='Terminal'>
-              <Console>ESP8266 Lua Terminal</Console>
-            </TabPane>
-          </TabbedArea>
-        </Row>
-      </Grid>
+      <div>
+        <Spinner active={this.state.working} className="working" />
+        <Grid>
+          <Row>
+            <Navbar>
+              <Nav>
+                {nav}
+              </Nav>
+            </Navbar>
+          </Row>
+          <Row>
+            <Col sm={12} md={2}>
+              <FileBrowser editor={editor} onLoadFile={this.loadFile} items={this.state.files} />
+            </Col>
+            <Col sm={12} md={10}>
+              {editor}
+            </Col>
+          </Row>
+          <Row>
+            <TabbedArea>
+              <TabPane eventKey={0} tab='Terminal'>
+                <Console>ESP8266 Lua Terminal</Console>
+              </TabPane>
+            </TabbedArea>
+          </Row>
+        </Grid>
+      </div>
     );
   }
 });
