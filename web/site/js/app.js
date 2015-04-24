@@ -66665,8 +66665,73 @@ var Row = Bootstrap.Row;
 var Col = Bootstrap.Col;
 var ListGroup = Bootstrap.ListGroup;
 var ListGroupItem = Bootstrap.ListGroupItem;
+var Modal = Bootstrap.Modal;
+var ModalTrigger = Bootstrap.ModalTrigger;
+var Input = Bootstrap.Input;
+var Button = Bootstrap.Button;
 
 var Ace  = require('./ace.jsx');
+
+var ConfirmDialog = React.createClass({displayName: "ConfirmDialog",
+  doClose: function(accepted){
+    this.props.onClose(accepted);
+    this.props.onRequestHide();
+  },
+  doNo: function(){
+    (this.props.onNo || noop)();
+    this.doClose(false);
+  },
+  doNo: function(){
+    (this.props.onYes || noop)();
+    this.doClose(true);
+  },
+  render: function(){
+    var message = this.props.message || 'Are you sure?';
+    var yes = this.props.yes || 'Yes';
+    var no = this.props.no || 'No';
+    return (
+      React.createElement(Modal, React.__spread({},  this.props, {bsStyle: "primary", title: "Modal heading", animation: true}), 
+        React.createElement("div", {className: "modal-body"}, 
+          React.createElement("p", null, message)
+        ), 
+        React.createElement("div", {className: "modal-footer"}, 
+          React.createElement(Button, {onClick: this.doNo}, no), 
+          React.createElement(Button, {onClick: this.doYes}, yes)
+        )
+      )
+    );
+  }
+});
+
+var FileNameDialog = React.createClass({displayName: "FileNameDialog",
+  saveClicked: function(){
+    var fileName = this.refs.fileName.getValue();
+    (this.props.onSave || noop)(fileName);
+    this.props.onRequestHide();
+  },
+  render: function(){
+    var namePrompt = this.props.namePrompt || 'File Name: ';
+    var save = this.props.save || 'Save';
+    var placeholder = this.props.placeholder || '';
+    var fileName = this.props.fileName || '';
+    return (
+      React.createElement(Modal, React.__spread({},  this.props, {bsStyle: "primary", title: "Modal heading", animation: true}), 
+        React.createElement("div", {className: "modal-body"}, 
+          React.createElement(Input, {
+            type: "text", 
+            defaultValue: fileName, 
+            placeholder: placeholder, 
+            label: namePrompt, 
+            hasFeedback: true, 
+            ref: "fileName"})
+        ), 
+        React.createElement("div", {className: "modal-footer"}, 
+          React.createElement(Button, {onClick: this.saveClicked}, save)
+        )
+      )
+    );
+  }
+});
 
 var ConsoleOutput = React.createClass({displayName: "ConsoleOutput",
   componentWillUpdate: function() {

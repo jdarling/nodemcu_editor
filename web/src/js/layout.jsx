@@ -66,8 +66,73 @@ var Row = Bootstrap.Row;
 var Col = Bootstrap.Col;
 var ListGroup = Bootstrap.ListGroup;
 var ListGroupItem = Bootstrap.ListGroupItem;
+var Modal = Bootstrap.Modal;
+var ModalTrigger = Bootstrap.ModalTrigger;
+var Input = Bootstrap.Input;
+var Button = Bootstrap.Button;
 
 var Ace  = require('./ace.jsx');
+
+var ConfirmDialog = React.createClass({
+  doClose: function(accepted){
+    this.props.onClose(accepted);
+    this.props.onRequestHide();
+  },
+  doNo: function(){
+    (this.props.onNo || noop)();
+    this.doClose(false);
+  },
+  doNo: function(){
+    (this.props.onYes || noop)();
+    this.doClose(true);
+  },
+  render: function(){
+    var message = this.props.message || 'Are you sure?';
+    var yes = this.props.yes || 'Yes';
+    var no = this.props.no || 'No';
+    return (
+      <Modal {...this.props} bsStyle='primary' title='Modal heading' animation={true}>
+        <div className='modal-body'>
+          <p>{message}</p>
+        </div>
+        <div className='modal-footer'>
+          <Button onClick={this.doNo}>{no}</Button>
+          <Button onClick={this.doYes}>{yes}</Button>
+        </div>
+      </Modal>
+    );
+  }
+});
+
+var FileNameDialog = React.createClass({
+  saveClicked: function(){
+    var fileName = this.refs.fileName.getValue();
+    (this.props.onSave || noop)(fileName);
+    this.props.onRequestHide();
+  },
+  render: function(){
+    var namePrompt = this.props.namePrompt || 'File Name: ';
+    var save = this.props.save || 'Save';
+    var placeholder = this.props.placeholder || '';
+    var fileName = this.props.fileName || '';
+    return (
+      <Modal {...this.props} bsStyle='primary' title='Modal heading' animation={true}>
+        <div className='modal-body'>
+          <Input
+            type='text'
+            defaultValue={fileName}
+            placeholder={placeholder}
+            label={namePrompt}
+            hasFeedback
+            ref='fileName' />
+        </div>
+        <div className='modal-footer'>
+          <Button onClick={this.saveClicked}>{save}</Button>
+        </div>
+      </Modal>
+    );
+  }
+});
 
 var ConsoleOutput = React.createClass({
   componentWillUpdate: function() {
