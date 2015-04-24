@@ -66976,11 +66976,13 @@ var ConfirmDialog = React.createClass({displayName: "ConfirmDialog",
 var FileNameDialog = React.createClass({displayName: "FileNameDialog",
   saveClicked: function(){
     var fileName = this.refs.fileName.getValue();
-    (this.props.onSave || noop)(fileName);
-    if(this.props.event){
-      bus.emit(this.props.event, {fileName: fileName});
+    if(!!fileName){
+      (this.props.onSave || noop)(fileName);
+      if(this.props.event){
+        bus.emit(this.props.event, {fileName: fileName});
+      }
+      this.props.onRequestHide();
     }
-    this.props.onRequestHide();
   },
   render: function(){
     var namePrompt = this.props.namePrompt || 'File Name: ';
@@ -67107,7 +67109,7 @@ var FileBrowser = React.createClass({displayName: "FileBrowser",
     var items = buildList(fileList);
     */
     var items = (this.props.items||[]).map(function(item, index){
-      return React.createElement(ListGroupItem, {key: index, value: 'load:'+item.fileName}, item.fileName);
+      return React.createElement(ListGroupItem, {key: item.fileName+index, value: 'load:'+item.fileName}, item.fileName);
     });
 
     return (
