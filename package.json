@@ -1,6 +1,6 @@
 {
   "name": "nodemcu_editor",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "An interactive editor for the NodeMCU",
   "main": "bin/server",
   "scripts": {
